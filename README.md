@@ -21,3 +21,7 @@ And to start the jupyter server:
 ```
 jupyter notebook
 ``` 
+or:
+```
+jupyter lab
+```
