@@ -1,0 +1,12 @@
+name: osobia
+channels:
+  - defaults
+dependencies:
+  - geopandas
+  - rasterio
+  - rasterstats
+  - jupyterlab
+  - matplotlib
+  - scikit-image
+  - tqdm
+prefix: C:\Miniconda3\envs\osobia

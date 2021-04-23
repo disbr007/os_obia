@@ -1,5 +1,6 @@
 import copy
 import logging
+import numpy as np
 import os
 import pathlib
 from pathlib import Path, PurePath
@@ -8,12 +9,14 @@ from subprocess import PIPE
 import typing
 from typing import Union
 
-from osgeo import gdal, ogr
+from osgeo import gdal, ogr, osr
 import geopandas as gpd
 import rasterio as rio
 from rasterio.features import shapes
 from rasterio.fill import fillnodata
 import rasterio.mask
+from skimage.segmentation import quickshift
+
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -249,3 +252,71 @@ def rio_polygonize(img: str, out_vec: str = None, band: int = 1, mask_value=None
         write_gdf(gdf, out_vec)
 
     return gdf
+
+
+def write_array(array, out_path, ds, stacked=False, fmt='GTiff',
+                dtype=None, nodata_val=None):
+    """
+    Writes the passed array with the metadata of the current raster object
+    as new raster.
+    """
+    # Get dimensions of input array
+    dims = len(array.shape)
+
+    # try:
+    if dims == 3:
+        depth, rows, cols = array.shape
+        stacked = True
+    elif dims == 2:
+    # except ValueError:
+        rows, cols = array.shape
+        depth = 1
+
+    # Handle NoData value
+    if nodata_val is None:
+        if nodata_val is not None:
+            nodata_val = GetRasterBand(1).GetNoDataValue()
+        else:
+            logger.warning('Unable to determine NoData value '
+                           'using -9999')
+            nodata_val = -9999
+    # Handle dtype
+    if not dtype:
+        # Use original dtype
+        dtype = ds.GetRasterBand(1).DataType
+
+    # Create output file
+    driver = gdal.GetDriverByName(fmt)
+    geotransform = ds.GetGeoTransform()
+    try:
+        dst_ds = driver.Create(out_path, ds.RasterXSize, ds.RasterYSize,
+                               bands=depth,
+                               eType=dtype)
+    except:
+        logger.error('Error creating: {}'.format(out_path))
+
+    # Set output geotransform and projection
+    dst_ds.SetGeoTransform(geotransform)
+    prj = osr.SpatialReference()
+    prj.ImportFromWkt(ds.GetProjectionRef())
+    dst_ds.SetProjection(prj.ExportToWkt())
+
+    # Loop through each layer of array and write as band
+    for i in range(depth):
+        if stacked:
+            if isinstance(array, np.ma.MaskedArray):
+                lyr = array[i, :, :].filled()
+            else:
+                lyr = array[i, :, :]
+            band = i + 1
+            dst_ds.GetRasterBand(band).WriteArray(lyr)
+            dst_ds.GetRasterBand(band).SetNoDataValue(nodata_val)
+        else:
+            band = i + 1
+            if isinstance(array, np.ma.MaskedArray):
+                dst_ds.GetRasterBand(band).WriteArray(array.filled(nodata_val))
+            else:
+                dst_ds.GetRasterBand(band).WriteArray(array)
+            dst_ds.GetRasterBand(band).SetNoDataValue(nodata_val)
+
+    dst_ds = None
