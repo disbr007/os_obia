@@ -17,7 +17,7 @@ To activate the environment:
 conda activate osobia
 ```
 
-And to start the jupyter server
+And to start the jupyter server:
 ```
 jupyter notebook
 ``` 

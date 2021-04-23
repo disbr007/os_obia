@@ -20,21 +20,30 @@ from skimage.segmentation import quickshift
 
 # Set up logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-ch = logging.StreamHandler()
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+# logger.setLevel(logging.INFO)
+# ch = logging.StreamHandler()
+# formatter = logging.Formatter(
+#     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# ch.setFormatter(formatter)
+# logger.addHandler(ch)
 
-
-def run_subprocess(command):
+def log_me():
+    logger.info('Test')
+    logger.warning('warning')
+    
+def run_subprocess(command, log=True):
     proc = subprocess.Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
+    response = []
     for line in iter(proc.stdout.readline, b''):  # replace '' with b'' for Python 3
-        logger.info(line.decode())
+        if log:
+            logger.info(line.decode())
+        else:
+            response.append(line.decode())
     output, error = proc.communicate()
-    logger.debug('Output: {}'.format(output.decode()))
-    logger.debug('Err: {}'.format(error.decode()))
+    if log:
+        logger.debug('Output: {}'.format(output.decode()))
+        logger.debug('Err: {}'.format(error.decode()))
+    return response
 
 
 def clean4cmdline(command):
@@ -289,6 +298,7 @@ def write_array(array, out_path, ds, stacked=False, fmt='GTiff',
     driver = gdal.GetDriverByName(fmt)
     geotransform = ds.GetGeoTransform()
     try:
+        logger.info(f'Creating raster at: {out_path}')
         dst_ds = driver.Create(out_path, ds.RasterXSize, ds.RasterYSize,
                                bands=depth,
                                eType=dtype)
@@ -320,3 +330,4 @@ def write_array(array, out_path, ds, stacked=False, fmt='GTiff',
             dst_ds.GetRasterBand(band).SetNoDataValue(nodata_val)
 
     dst_ds = None
+    logger.info('Writing complete.')

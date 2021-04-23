@@ -23,7 +23,6 @@ from lib import detect_ogr_driver, read_vec, write_gdf
 
 
 logger = logging.getLogger(__name__)
-logger.info('logging from zs')
 
 # custom_stat_fxn = {
 #     'glcm': calc_glcm
